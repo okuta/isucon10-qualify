@@ -36,3 +36,36 @@ CREATE TABLE isuumo.chair
     popularity  INTEGER         NOT NULL,
     stock       INTEGER         NOT NULL
 );
+
+ALTER TABLE isuumo.estate ADD COLUMN door_size0 INT GENERATED ALWAYS AS (GREATEST(door_width, door_height)) STORED;
+ALTER TABLE isuumo.estate ADD COLUMN door_size1 INT GENERATED ALWAYS AS (LEAST(door_width, door_height)) STORED;
+ALTER TABLE isuumo.estate ADD COLUMN popularity2 BIGINT GENERATED ALWAYS AS (popularity * 100000000 - id) STORED;
+ALTER TABLE isuumo.chair ADD COLUMN popularity2 BIGINT GENERATED ALWAYS AS (popularity * 100000000 - id) STORED;
+
+--
+-- テーブルのインデックス `estate`
+--
+ALTER TABLE isuumo.estate
+  ADD KEY `latitude` (`latitude`,`longitude`),
+  ADD KEY `door_size0` (`door_size0`),
+  ADD KEY `door_size1` (`door_size1`),
+  ADD KEY `door_height` (`door_height`),
+  ADD KEY `door_width` (`door_width`),
+  ADD KEY `rent` (`rent`),
+  ADD KEY `rent2` (`rent`,`popularity`),
+  Add KEY `popularity2` (`popularity2`),
+  ADD KEY `popularity` (`popularity`);
+
+--
+-- テーブルのインデックス `chair`
+--
+ALTER TABLE isuumo.chair
+  ADD KEY `price` (`price`),
+  ADD KEY `height` (`height`),
+  ADD KEY `width` (`width`),
+  ADD KEY `depth` (`depth`) USING BTREE,
+  ADD KEY `kind` (`kind`),
+  ADD KEY `color` (`color`),
+  ADD KEY `stock` (`stock`),
+  Add KEY `popularity2` (`popularity2`),
+  ADD KEY `popularity` (`popularity`);

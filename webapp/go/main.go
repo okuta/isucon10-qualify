@@ -10,6 +10,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"sort"
 	"strconv"
 	"strings"
 
@@ -46,6 +47,7 @@ type Chair struct {
 	Kind        string `db:"kind" json:"kind"`
 	Popularity  int64  `db:"popularity" json:"-"`
 	Stock       int64  `db:"stock" json:"-"`
+	Popularity2 int64  `db:"popularity2" json:"-"`
 }
 
 type ChairSearchResponse struct {
@@ -71,6 +73,9 @@ type Estate struct {
 	DoorWidth   int64   `db:"door_width" json:"doorWidth"`
 	Features    string  `db:"features" json:"features"`
 	Popularity  int64   `db:"popularity" json:"-"`
+	DoorSize0   int64   `db:"door_size0"  json:"-"`
+	DoorSize1   int64   `db:"door_size1"  json:"-"`
+	Popularity2 int64   `db:"popularity2"  json:"-"`
 }
 
 //EstateSearchResponse estate/searchへのレスポンスの形式
@@ -310,6 +315,11 @@ func initialize(c echo.Context) error {
 		}
 	}
 
+	if _, err := db.Exec("DELETE FROM chair WHERE stock <= 0"); err != nil {
+		c.Echo().Logger.Errorf("chair stock update failed : %v", err)
+		return c.NoContent(http.StatusInternalServerError)
+	}
+
 	return c.JSON(http.StatusOK, InitializeResponse{
 		Language: "go",
 	})
@@ -493,8 +503,6 @@ func searchChairs(c echo.Context) error {
 		return c.NoContent(http.StatusBadRequest)
 	}
 
-	conditions = append(conditions, "stock > 0")
-
 	page, err := strconv.Atoi(c.QueryParam("page"))
 	if err != nil {
 		c.Logger().Infof("Invalid format page parameter : %v", err)
@@ -510,7 +518,7 @@ func searchChairs(c echo.Context) error {
 	searchQuery := "SELECT * FROM chair WHERE "
 	countQuery := "SELECT COUNT(*) FROM chair WHERE "
 	searchCondition := strings.Join(conditions, " AND ")
-	limitOffset := " ORDER BY popularity DESC, id ASC LIMIT ? OFFSET ?"
+	limitOffset := " ORDER BY popularity2 DESC LIMIT ? OFFSET ?"
 
 	var res ChairSearchResponse
 	err = db.Get(&res.Count, countQuery+searchCondition, params...)
@@ -578,10 +586,14 @@ func buyChair(c echo.Context) error {
 		c.Echo().Logger.Errorf("chair stock update failed : %v", err)
 		return c.NoContent(http.StatusInternalServerError)
 	}
-
 	err = tx.Commit()
 	if err != nil {
 		c.Echo().Logger.Errorf("transaction commit error : %v", err)
+		return c.NoContent(http.StatusInternalServerError)
+	}
+
+	if _, err := db.Exec("DELETE FROM chair WHERE stock <= 0"); err != nil {
+		c.Echo().Logger.Errorf("chair stock update failed : %v", err)
 		return c.NoContent(http.StatusInternalServerError)
 	}
 
@@ -596,7 +608,7 @@ func getChairSearchCondition(c echo.Context) error {
 func getLowPricedChair(c echo.Context) error {
 	defer NewProfiler("getLowPricedChair").Close()
 	var chairs []Chair
-	query := `SELECT * FROM chair WHERE stock > 0 ORDER BY price ASC, id ASC LIMIT ?`
+	query := `SELECT * FROM chair ORDER BY price ASC, id ASC LIMIT ?`
 	err := db.Select(&chairs, query, Limit)
 	if err != nil {
 		if err == sql.ErrNoRows {
@@ -785,7 +797,7 @@ func searchEstates(c echo.Context) error {
 	searchQuery := "SELECT * FROM estate WHERE "
 	countQuery := "SELECT COUNT(*) FROM estate WHERE "
 	searchCondition := strings.Join(conditions, " AND ")
-	limitOffset := " ORDER BY popularity DESC, id ASC LIMIT ? OFFSET ?"
+	limitOffset := " ORDER BY popularity2 DESC LIMIT ? OFFSET ?"
 
 	var res EstateSearchResponse
 	err = db.Get(&res.Count, countQuery+searchCondition, params...)
@@ -851,8 +863,13 @@ func searchRecommendedEstateWithChair(c echo.Context) error {
 	w := chair.Width
 	h := chair.Height
 	d := chair.Depth
-	query = `SELECT * FROM estate WHERE (door_width >= ? AND door_height >= ?) OR (door_width >= ? AND door_height >= ?) OR (door_width >= ? AND door_height >= ?) OR (door_width >= ? AND door_height >= ?) OR (door_width >= ? AND door_height >= ?) OR (door_width >= ? AND door_height >= ?) ORDER BY popularity DESC, id ASC LIMIT ?`
-	err = db.Select(&estates, query, w, h, w, d, h, w, h, d, d, w, d, h, Limit)
+	is := []int64{w, h, d}
+	sort.Slice(is, func(i, j int) bool {
+		return is[i] > is[j]
+	})
+
+	query = `SELECT * FROM estate WHERE door_size0 >= ? AND door_size1 >= ? ORDER BY popularity2 DESC LIMIT ?`
+	err = db.Select(&estates, query, is[1], is[2], Limit)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return c.JSON(http.StatusOK, EstateListResponse{[]Estate{}})
@@ -879,7 +896,7 @@ func searchEstateNazotte(c echo.Context) error {
 
 	b := coordinates.getBoundingBox()
 	estatesInBoundingBox := []Estate{}
-	query := `SELECT * FROM estate WHERE latitude <= ? AND latitude >= ? AND longitude <= ? AND longitude >= ? ORDER BY popularity DESC, id ASC`
+	query := `SELECT * FROM estate WHERE latitude <= ? AND latitude >= ? AND longitude <= ? AND longitude >= ? ORDER BY popularity2 DESC`
 	err = db.Select(&estatesInBoundingBox, query, b.BottomRightCorner.Latitude, b.TopLeftCorner.Latitude, b.BottomRightCorner.Longitude, b.TopLeftCorner.Longitude)
 	if err == sql.ErrNoRows {
 		c.Echo().Logger.Infof("select * from estate where latitude ...", err)
