@@ -19,6 +19,8 @@ services:
       resources:
         limits:
           cpus: '2.0'
+    security_opt:
+      - seccomp:unconfined
 
   api-server:
     build: ../go
@@ -50,6 +52,8 @@ services:
       resources:
         limits:
           cpus: '1.0'
+    security_opt:
+      - seccomp:unconfined
 
   frontend:
     build: ../frontend
