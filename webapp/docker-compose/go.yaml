@@ -15,6 +15,10 @@ services:
       MYSQL_PASSWORD: isucon
     ports:
       - "3306:3306"
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
 
   api-server:
     build: ../go
@@ -27,6 +31,7 @@ services:
     volumes:
       - ../mysql/db:/go/src/mysql/db
       - ../fixture:/go/src/fixture
+      - ../go:/go/src/isuumo
     environment:
       MYSQL_DATABASE: isuumo
       MYSQL_USER: isucon
@@ -35,9 +40,15 @@ services:
       SERVER_PORT: 1323
     ports:
       - "1323:1323"
+      - "6060:6060"
     depends_on:
       - mysql
-    command: /go/src/isuumo/isuumo
+    # command: /go/src/isuumo/isuumo
+    command: /bin/sh -c "while sleep 1000; do :; done"
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
 
   frontend:
     build: ../frontend
@@ -53,12 +64,6 @@ services:
         - ../nginx/out:/www/data
     ports:
       - "8080:80"
-    entrypoint:
-      - dockerize
-      - -timeout
-      - 60s
-      - -wait
-      - http://api-server:1323/api/estate/search/condition
     environment:
       API_SERVER: api-server
     depends_on:
@@ -70,3 +75,16 @@ services:
       '< /etc/nginx/nginx.conf.template
       > /etc/nginx/nginx.conf
       && nginx -g 'daemon off;'"
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin
+    environment:
+      - PMA_ARBITRARY=1
+      - PMA_HOST=mysql
+      - PMA_USER=isucon
+      - PMA_PASSWORD=isucon
+    links:
+      - mysql
+    ports:
+       - 8888:80
+    volumes:
+       - /sessions
