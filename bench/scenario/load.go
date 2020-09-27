@@ -189,9 +189,11 @@ func checkWorkers(ctx context.Context) {
 			for i := 0; i < incWorkers.EstateNazotteSearchWorker; i++ {
 				go runEstateNazotteSearchWorker(ctx)
 			}
-			for i := 0; i < incWorkers.BotWorker; i++ {
-				go runBotWorker(ctx)
-			}
+			/*
+				for i := 0; i < incWorkers.BotWorker; i++ {
+					go runBotWorker(ctx)
+				}
+			*/
 			for i := 0; i < incWorkers.ChairDraftPostWorker; i++ {
 				go runChairDraftPostWorker(ctx)
 			}
