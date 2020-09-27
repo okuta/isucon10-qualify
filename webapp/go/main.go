@@ -249,6 +249,7 @@ func main() {
 	e.Use(middleware.Recover())
 
 	// Initialize
+	e.GET("/initialize", initialize)
 	e.POST("/initialize", initialize)
 
 	// Chair Handler
@@ -285,6 +286,7 @@ func main() {
 }
 
 func initialize(c echo.Context) error {
+	defer NewProfiler("initialize").Close()
 	sqlDir := filepath.Join("..", "mysql", "db")
 	paths := []string{
 		filepath.Join(sqlDir, "0_Schema.sql"),
@@ -314,6 +316,7 @@ func initialize(c echo.Context) error {
 }
 
 func getChairDetail(c echo.Context) error {
+	defer NewProfiler("getChairDetail").Close()
 	id, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
 		c.Echo().Logger.Errorf("Request parameter \"id\" parse error : %v", err)
@@ -339,6 +342,7 @@ func getChairDetail(c echo.Context) error {
 }
 
 func postChair(c echo.Context) error {
+	defer NewProfiler("postChair").Close()
 	header, err := c.FormFile("chairs")
 	if err != nil {
 		c.Logger().Errorf("failed to get form file: %v", err)
@@ -395,6 +399,7 @@ func postChair(c echo.Context) error {
 }
 
 func searchChairs(c echo.Context) error {
+	defer NewProfiler("searchChairs").Close()
 	conditions := make([]string, 0)
 	params := make([]interface{}, 0)
 
@@ -531,6 +536,7 @@ func searchChairs(c echo.Context) error {
 }
 
 func buyChair(c echo.Context) error {
+	defer NewProfiler("buyChair").Close()
 	m := echo.Map{}
 	if err := c.Bind(&m); err != nil {
 		c.Echo().Logger.Infof("post buy chair failed : %v", err)
@@ -583,10 +589,12 @@ func buyChair(c echo.Context) error {
 }
 
 func getChairSearchCondition(c echo.Context) error {
+	defer NewProfiler("getChairSearchCondition").Close()
 	return c.JSON(http.StatusOK, chairSearchCondition)
 }
 
 func getLowPricedChair(c echo.Context) error {
+	defer NewProfiler("getLowPricedChair").Close()
 	var chairs []Chair
 	query := `SELECT * FROM chair WHERE stock > 0 ORDER BY price ASC, id ASC LIMIT ?`
 	err := db.Select(&chairs, query, Limit)
@@ -603,6 +611,7 @@ func getLowPricedChair(c echo.Context) error {
 }
 
 func getEstateDetail(c echo.Context) error {
+	defer NewProfiler("getEstateDetail").Close()
 	id, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
 		c.Echo().Logger.Infof("Request parameter \"id\" parse error : %v", err)
@@ -624,6 +633,7 @@ func getEstateDetail(c echo.Context) error {
 }
 
 func getRange(cond RangeCondition, rangeID string) (*Range, error) {
+	defer NewProfiler("getRange").Close()
 	RangeIndex, err := strconv.Atoi(rangeID)
 	if err != nil {
 		return nil, err
@@ -637,6 +647,7 @@ func getRange(cond RangeCondition, rangeID string) (*Range, error) {
 }
 
 func postEstate(c echo.Context) error {
+	defer NewProfiler("postEstate").Close()
 	header, err := c.FormFile("estates")
 	if err != nil {
 		c.Logger().Errorf("failed to get form file: %v", err)
@@ -692,6 +703,7 @@ func postEstate(c echo.Context) error {
 }
 
 func searchEstates(c echo.Context) error {
+	defer NewProfiler("searchEstates").Close()
 	conditions := make([]string, 0)
 	params := make([]interface{}, 0)
 
@@ -799,6 +811,7 @@ func searchEstates(c echo.Context) error {
 }
 
 func getLowPricedEstate(c echo.Context) error {
+	defer NewProfiler("getLowPricedEstate").Close()
 	estates := make([]Estate, 0, Limit)
 	query := `SELECT * FROM estate ORDER BY rent ASC, id ASC LIMIT ?`
 	err := db.Select(&estates, query, Limit)
@@ -815,6 +828,7 @@ func getLowPricedEstate(c echo.Context) error {
 }
 
 func searchRecommendedEstateWithChair(c echo.Context) error {
+	defer NewProfiler("searchRecommendedEstateWithChair").Close()
 	id, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
 		c.Logger().Infof("Invalid format searchRecommendedEstateWithChair id : %v", err)
@@ -851,6 +865,7 @@ func searchRecommendedEstateWithChair(c echo.Context) error {
 }
 
 func searchEstateNazotte(c echo.Context) error {
+	defer NewProfiler("searchEstateNazotte").Close()
 	coordinates := Coordinates{}
 	err := c.Bind(&coordinates)
 	if err != nil {
@@ -906,6 +921,7 @@ func searchEstateNazotte(c echo.Context) error {
 }
 
 func postEstateRequestDocument(c echo.Context) error {
+	defer NewProfiler("postEstateRequestDocument").Close()
 	m := echo.Map{}
 	if err := c.Bind(&m); err != nil {
 		c.Echo().Logger.Infof("post request document failed : %v", err)
@@ -939,10 +955,12 @@ func postEstateRequestDocument(c echo.Context) error {
 }
 
 func getEstateSearchCondition(c echo.Context) error {
+	defer NewProfiler("getEstateSearchCondition").Close()
 	return c.JSON(http.StatusOK, estateSearchCondition)
 }
 
 func (cs Coordinates) getBoundingBox() BoundingBox {
+	defer NewProfiler("getBoundingBox").Close()
 	coordinates := cs.Coordinates
 	boundingBox := BoundingBox{
 		TopLeftCorner: Coordinate{
@@ -971,6 +989,7 @@ func (cs Coordinates) getBoundingBox() BoundingBox {
 }
 
 func (cs Coordinates) coordinatesToText() string {
+	defer NewProfiler("coordinatesToText").Close()
 	points := make([]string, 0, len(cs.Coordinates))
 	for _, c := range cs.Coordinates {
 		points = append(points, fmt.Sprintf("%f %f", c.Latitude, c.Longitude))
