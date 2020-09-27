@@ -41,6 +41,7 @@ services:
     ports:
       - "1323:1323"
       - "6060:6060"
+      - "9003:9003"
     depends_on:
       - mysql
     # command: /go/src/isuumo/isuumo
